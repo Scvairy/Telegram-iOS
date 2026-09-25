@@ -112,6 +112,12 @@ private final class ChatControllerNodeView: UITracingLayerView, WindowInputAcces
     }
 }
 
+private final class ChatControllerEmptyInputView: UIView, UIInputViewAudioFeedback {
+    var enableInputClicksWhenVisible: Bool {
+        return true
+    }
+}
+
 private final class ScrollContainerNode: ASScrollNode {
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         if super.hitTest(point, with: event) == self.view {
@@ -3631,7 +3637,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         }
     }
         
-    private let emptyInputView = EmptyInputView()
+    private let emptyInputView = ChatControllerEmptyInputView()
     private func chatPresentationInterfaceStateInputView(_ state: ChatPresentationInterfaceState) -> UIView? {
         switch state.inputMode {
         case .text:

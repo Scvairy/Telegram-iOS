@@ -170,7 +170,7 @@ genrule(
     ],
 )
 
-minimum_os_version = "13.0"
+minimum_os_version = "15.0"
 minimum_watchos_version="7.0" # MARK: Swiftgram
 
 notificationServiceExtensionVersion = "v1"
@@ -510,7 +510,7 @@ official_carplay_fragment = """
 <key>com.apple.developer.carplay-messaging</key>
 <true/>
 """
-carplay_fragment = official_carplay_fragment # MARK: Swiftgram if telegram_bundle_id in official_bundle_ids else ""
+carplay_fragment = official_carplay_fragment if telegram_bundle_id in official_bundle_ids else ""
 
 icloud_fragment = "" if not telegram_enable_icloud else """
 <key>com.apple.developer.icloud-services</key>
@@ -1064,7 +1064,7 @@ ios_extension(
     minimum_os_version = minimum_os_version,
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
-        "//conditions:default": "@build_configuration//provisioning:Share.mobileprovision",
+        "//conditions:default": ":Share_xcode_profile" if telegram_use_xcode_managed_codesigning else "@build_configuration//provisioning:Share.mobileprovision",
     }),
     deps = [":ShareExtensionLib"],
     frameworks = [
@@ -1171,7 +1171,7 @@ ios_extension(
     #ipa_post_processor = ":SetMinOsVersionNotificationContentExtension",
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
-        "//conditions:default": "@build_configuration//provisioning:NotificationContent.mobileprovision",
+        "//conditions:default": ":NotificationContent_xcode_profile" if telegram_use_xcode_managed_codesigning else "@build_configuration//provisioning:NotificationContent.mobileprovision",
     }),
     deps = [":NotificationContentExtensionLib"],
     frameworks = [
@@ -1277,7 +1277,7 @@ ios_extension(
     #provides_main = True,
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
-        "//conditions:default": "@build_configuration//provisioning:Widget.mobileprovision",
+        "//conditions:default": ":Widget_xcode_profile" if telegram_use_xcode_managed_codesigning else "@build_configuration//provisioning:Widget.mobileprovision",
     }),
     deps = [
         ":WidgetExtensionLib",
@@ -1413,7 +1413,7 @@ ios_extension(
     #ipa_post_processor = ":SetMinOsVersionIntentsExtension",
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
-        "//conditions:default": "@build_configuration//provisioning:Intents.mobileprovision",
+        "//conditions:default": ":Intents_xcode_profile" if telegram_use_xcode_managed_codesigning else "@build_configuration//provisioning:Intents.mobileprovision",
     }),
     deps = [":IntentsExtensionLib"],
     frameworks = [
@@ -1649,7 +1649,7 @@ ios_extension(
     #ipa_post_processor = ":SetMinOsVersionBroadcastUploadExtension",
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
-        "//conditions:default": "@build_configuration//provisioning:BroadcastUpload.mobileprovision",
+        "//conditions:default": ":BroadcastUpload_xcode_profile" if telegram_use_xcode_managed_codesigning else "@build_configuration//provisioning:BroadcastUpload.mobileprovision",
     }),
     deps = [":BroadcastUploadExtensionLib"],
     frameworks = [
@@ -1709,7 +1709,7 @@ ios_extension(
     minimum_os_version = minimum_os_version, # maintain the same minimum OS version across extensions
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
-        "//conditions:default": "@build_configuration//provisioning:NotificationService.mobileprovision",
+        "//conditions:default": ":NotificationService_xcode_profile" if telegram_use_xcode_managed_codesigning else "@build_configuration//provisioning:NotificationService.mobileprovision",
     }),
     deps = ["//Telegram/NotificationService:NotificationServiceExtensionLib"],
     frameworks = [
@@ -1748,6 +1748,23 @@ plist_fragment(
     <string>????</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>Default Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>SceneDelegate</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>instagram</string>
@@ -1912,6 +1929,80 @@ xcode_provisioning_profile(
    name = "Telegram_xcode_profile",
    managed_by_xcode = True,
    provisioning_profile = ":Telegram_local_profile",
+)
+
+local_provisioning_profile(
+    name = "Share_local_profile",
+    # Extensions do not declare per-extension entitlements. The automatically
+    # managed wildcard development profile covers their bundle identifiers.
+    profile_name = "iOS Team Provisioning Profile: *",
+    team_id = telegram_team_id,
+)
+
+xcode_provisioning_profile(
+    name = "Share_xcode_profile",
+    managed_by_xcode = True,
+    provisioning_profile = ":Share_local_profile",
+)
+
+local_provisioning_profile(
+    name = "NotificationContent_local_profile",
+    profile_name = "iOS Team Provisioning Profile: *",
+    team_id = telegram_team_id,
+)
+
+xcode_provisioning_profile(
+    name = "NotificationContent_xcode_profile",
+    managed_by_xcode = True,
+    provisioning_profile = ":NotificationContent_local_profile",
+)
+
+local_provisioning_profile(
+    name = "NotificationService_local_profile",
+    profile_name = "iOS Team Provisioning Profile: *",
+    team_id = telegram_team_id,
+)
+
+xcode_provisioning_profile(
+    name = "NotificationService_xcode_profile",
+    managed_by_xcode = True,
+    provisioning_profile = ":NotificationService_local_profile",
+)
+
+local_provisioning_profile(
+    name = "Intents_local_profile",
+    profile_name = "iOS Team Provisioning Profile: *",
+    team_id = telegram_team_id,
+)
+
+xcode_provisioning_profile(
+    name = "Intents_xcode_profile",
+    managed_by_xcode = True,
+    provisioning_profile = ":Intents_local_profile",
+)
+
+local_provisioning_profile(
+    name = "Widget_local_profile",
+    profile_name = "iOS Team Provisioning Profile: *",
+    team_id = telegram_team_id,
+)
+
+xcode_provisioning_profile(
+    name = "Widget_xcode_profile",
+    managed_by_xcode = True,
+    provisioning_profile = ":Widget_local_profile",
+)
+
+local_provisioning_profile(
+    name = "BroadcastUpload_local_profile",
+    profile_name = "iOS Team Provisioning Profile: *",
+    team_id = telegram_team_id,
+)
+
+xcode_provisioning_profile(
+    name = "BroadcastUpload_xcode_profile",
+    managed_by_xcode = True,
+    provisioning_profile = ":BroadcastUpload_local_profile",
 )
 
 apple_prebuilt_watchos_application(

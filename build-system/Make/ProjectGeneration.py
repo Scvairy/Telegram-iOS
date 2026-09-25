@@ -39,6 +39,10 @@ def generate_xcodeproj(build_environment: BuildEnvironment, disable_extensions, 
         if disable_extensions:
             project_bazel_arguments += ['--//{}:disableExtensions'.format(app_target)]
         project_bazel_arguments += ['--//{}:disableStripping'.format(app_target)]
+        # Xcode 27.1 enables new Swift diagnostics and deprecates UIKit APIs that
+        # this legacy codebase still uses. Keep them visible to developers without
+        # turning them into build-stopping errors in the generated project.
+        project_bazel_arguments += ['--@build_bazel_rules_swift//swift:copt=-no-warnings-as-errors', '--copt=-Wno-error=deprecated-declarations']
 
     project_bazel_arguments += ['--features=-swift.debug_prefix_map']
     project_bazel_arguments += ['--features=swift.emit_swiftsourceinfo']

@@ -893,7 +893,7 @@ func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, ur
                                 }
                                 return
                             case "pro", "premium", "buy":
-                                if context.sharedContext.immediateSGStatus.status > 1 {
+                                if context.sharedContext.immediateSGStatus.hasProFeatures {
                                     navigationController?.pushViewController(context.sharedContext.makeSGProController(context: context))
                                 } else {
                                     if let lastViewController = navigationController?.viewControllers.last as? ViewController {

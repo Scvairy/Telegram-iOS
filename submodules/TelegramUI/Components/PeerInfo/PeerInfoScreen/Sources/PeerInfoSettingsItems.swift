@@ -221,7 +221,7 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     
     
     let sgWebSettings = context.currentAppConfiguration.with({ $0 }).sgWebSettings
-    if sgWebSettings.global.paymentsEnabled || context.sharedContext.immediateSGStatus.status > 1 {
+    if sgWebSettings.global.paymentsEnabled || context.sharedContext.immediateSGStatus.hasProFeatures {
         items[.swiftgram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: swiftgramProLabel, text: "Swiftgram Pro", icon: PresentationResourcesSettings.swiftgramPro, action: {
             interaction.openSettings(.swiftgramPro)
         }))

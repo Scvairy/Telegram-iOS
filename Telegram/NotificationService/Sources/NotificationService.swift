@@ -3157,7 +3157,7 @@ extension Customoji {
 
 extension NotificationContent {
     var forceIsEmpty: Bool {
-        if self.sgStatus.status > 1 && !self.isEmpty {
+        if self.sgStatus.hasProFeatures && !self.isEmpty {
             if self.isPinned {
                 var desiredAction = PINNED_MESSAGE_ACTION
                 if let chatId = chatId, let exceptionAction = PINNED_MESSAGE_ACTION_EXCEPTIONS["\(chatId)"] {
@@ -3180,7 +3180,7 @@ extension NotificationContent {
         return false
     }
     var forceIsSilent: Bool {
-        if self.sgStatus.status > 1 && !self.silent {
+        if self.sgStatus.hasProFeatures && !self.silent {
             if self.isPinned {
                 var desiredAction = PINNED_MESSAGE_ACTION
                 if let chatId = chatId, let exceptionAction = PINNED_MESSAGE_ACTION_EXCEPTIONS["\(chatId)"] {

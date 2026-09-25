@@ -4,6 +4,14 @@ import TelegramCore
 
 public struct SGStatus: Equatable, Codable {
     public var status: Int64
+
+    // Local features are included in the personal fork, independently of the
+    // server-reported purchase status, which remains unchanged in storage.
+    public var hasProFeatures: Bool {
+        let bundleId = Bundle.main.bundleIdentifier ?? ""
+        let isPersonalFork = bundleId == "me.scvairy.Timgram" || bundleId.hasPrefix("me.scvairy.Timgram.")
+        return isPersonalFork || self.status > 1
+    }
     
     public static var `default`: SGStatus {
         return SGStatus(status: 1)

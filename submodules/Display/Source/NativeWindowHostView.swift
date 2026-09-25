@@ -87,7 +87,7 @@ private final class WindowRootViewControllerView: UIView {
     }
 }
 
-private final class WindowRootViewController: UIViewController, UIWindowSceneDelegate {
+private final class WindowRootViewController: UIViewController {
     private var voiceOverStatusObserver: AnyObject?
     private var registeredForPreviewing = false
     
@@ -195,9 +195,6 @@ private final class WindowRootViewController: UIViewController, UIWindowSceneDel
             self._systemUserInterfaceStyle.set(.light)
         }
         
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-            windowScene.delegate = self
-        }
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -208,11 +205,6 @@ private final class WindowRootViewController: UIViewController, UIWindowSceneDel
         if let voiceOverStatusObserver = self.voiceOverStatusObserver {
             NotificationCenter.default.removeObserver(voiceOverStatusObserver)
         }
-    }
-    
-    @available(iOS 26.0, *)
-    func preferredWindowingControlStyle(for windowScene: UIWindowScene) -> UIWindowScene.WindowingControlStyle {
-        return .minimal
     }
     
     override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge {
@@ -310,6 +302,16 @@ private final class NativeWindow: UIWindow, WindowHost {
             }
         }
     }
+
+    override init(windowScene: UIWindowScene) {
+        super.init(windowScene: windowScene)
+
+        if let gestureRecognizers = self.gestureRecognizers {
+            for recognizer in gestureRecognizers {
+                recognizer.delaysTouchesBegan = false
+            }
+        }
+    }
     
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -371,13 +373,20 @@ private final class NativeWindow: UIWindow, WindowHost {
     }
 }
 
-public func nativeWindowHostView() -> (UIWindow & WindowHost, WindowHostView) {
-    let window = NativeWindow(frame: UIScreen.main.bounds)
+public func nativeWindowHostView(windowScene: UIWindowScene? = nil) -> (UIWindow & WindowHost, WindowHostView) {
+    let window: NativeWindow
+    if let windowScene {
+        window = NativeWindow(windowScene: windowScene)
+        window.frame = windowScene.coordinateSpace.bounds
+    } else {
+        window = NativeWindow(frame: UIScreen.main.bounds)
+    }
     
     let rootViewController = WindowRootViewController()
     window.rootViewController = rootViewController
     rootViewController.viewWillAppear(false)
     rootViewController.view.frame = CGRect(origin: CGPoint(), size: window.bounds.size)
+    rootViewController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     rootViewController.viewDidAppear(false)
     
     let hostView = WindowHostView(

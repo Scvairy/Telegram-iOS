@@ -83,6 +83,39 @@ private func isKeyboardWindow(window: NSObject) -> Bool {
     return false
 }
 
+@objc(SceneDelegate) final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+
+    @available(iOS 26.0, *)
+    func preferredWindowingControlStyle(for windowScene: UIWindowScene) -> UIWindowScene.WindowingControlStyle {
+        return .minimal
+    }
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        guard let windowScene = scene as? UIWindowScene, let appDelegate = AppDelegate.current else {
+            return
+        }
+        appDelegate.configureScene(windowScene)
+        self.window = appDelegate.window
+    }
+
+    func sceneWillResignActive(_ scene: UIScene) {
+        AppDelegate.current?.sceneWillResignActive(scene)
+    }
+
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        AppDelegate.current?.sceneDidEnterBackground(scene)
+    }
+
+    func sceneWillEnterForeground(_ scene: UIScene) {
+        AppDelegate.current?.sceneWillEnterForeground(scene)
+    }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        AppDelegate.current?.sceneDidBecomeActive(scene)
+    }
+}
+
 private func isKeyboardView(view: NSObject) -> Bool {
     let typeName = NSStringFromClass(type(of: view))
     if typeName.hasPrefix("UI") && typeName.hasSuffix("InputSetHostView") {
@@ -132,6 +165,10 @@ private class ApplicationStatusBarHost: StatusBarHost {
     }
     
     var keyboardWindow: UIWindow? {
+        if #available(iOS 27.0, *) {
+            // UIKit no longer permits creating or querying its remote keyboard window.
+            return nil
+        }
         if #available(iOS 16.0, *) {
             return UIApplication.shared.internalGetKeyboard()
         }
@@ -228,6 +265,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
 }
 
 @objc(AppDelegate) class AppDelegate: UIResponder, UIApplicationDelegate, PKPushRegistryDelegate, UNUserNotificationCenterDelegate, URLSessionDelegate, URLSessionTaskDelegate {
+    static weak var current: AppDelegate?
     @objc var window: UIWindow?
     var nativeWindow: (UIWindow & WindowHost)?
     var mainWindow: Window1!
@@ -333,10 +371,22 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     private let regularDeviceToken = Promise<Data?>(nil)
     
     private var recaptchaClientsBySiteKey: [String: Promise<RecaptchaClient>] = [:]
+    private weak var launchApplication: UIApplication?
+    private var launchOptions: [UIApplication.LaunchOptionsKey: Any]?
         
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        AppDelegate.current = self
+        self.launchApplication = application
+        self.launchOptions = launchOptions
+        return true
+    }
+
+    func configureScene(_ scene: UIWindowScene) {
         precondition(!testIsLaunched)
         testIsLaunched = true
+        guard let application = self.launchApplication else {
+            return
+        }
         
         let _ = voipTokenPromise.get().start(next: { token in
             self.voipDeviceToken.set(.single(token))
@@ -407,7 +457,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             )
         }
         
-        let (window, hostView) = nativeWindowHostView()
+        let (window, hostView) = nativeWindowHostView(windowScene: scene)
         let statusBarHost = ApplicationStatusBarHost(scene: window.windowScene)
         self.mainWindow = Window1(hostView: hostView, statusBarHost: statusBarHost)
         if let traitCollection = window.rootViewController?.traitCollection {
@@ -428,7 +478,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         self.nativeWindow = window
         // MARK: Swiftgram
         if sgHardReset(present: self.mainWindow?.presentNative, beforePresent: { self.window?.makeKeyAndVisible() }) {
-            return true
+            return
         }
         //
         
@@ -661,7 +711,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         
         guard let appGroupUrl = maybeAppGroupUrl else {
             self.mainWindow?.presentNative(UIAlertController(title: nil, message: "Error 2", preferredStyle: .alert))
-            return true
+            return
         }
         
         var isDebugConfiguration = false
@@ -729,7 +779,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             }))
             self.mainWindow?.presentNative(alertController)
             
-            return true
+            return
         }
         
         let legacyLogs: [String] = [
@@ -1091,7 +1141,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 }
             })
 
-            return true
+            return
         }
 
         let pushRegistry = PKPushRegistry(queue: .main)
@@ -1754,7 +1804,6 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             }
         })
                 
-        return true
     }
     
     private var backgroundSessionSourceDataDisposables: [String: Disposable] = [:]
@@ -1961,7 +2010,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }))
     }
 
-    func applicationWillResignActive(_ application: UIApplication) {
+    func sceneWillResignActive(_ scene: UIScene) {
         self.isActiveValue = false
         self.isActivePromise.set(false)
         self.clearNotificationsManager?.commitNow()
@@ -1988,7 +2037,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         })
     }
 
-    func applicationDidEnterBackground(_ application: UIApplication) {
+    func sceneDidEnterBackground(_ scene: UIScene) {
         let _ = (self.sharedContextPromise.get()
         |> take(1)
         |> deliverOnMainQueue).start(next: { sharedApplicationContext in
@@ -2023,19 +2072,19 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         
         let taskIdHolder = TaskIdHolder()
         
-        taskIdHolder.taskId = application.beginBackgroundTask(withName: "lock", expirationHandler: {
+        taskIdHolder.taskId = self.launchApplication?.beginBackgroundTask(withName: "lock", expirationHandler: {
             if let taskId = taskIdHolder.taskId {
-                UIApplication.shared.endBackgroundTask(taskId)
+                self.launchApplication?.endBackgroundTask(taskId)
             }
         })
         DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + 5.0, execute: {
             if let taskId = taskIdHolder.taskId {
-                UIApplication.shared.endBackgroundTask(taskId)
+                self.launchApplication?.endBackgroundTask(taskId)
             }
         })
     }
 
-    func applicationWillEnterForeground(_ application: UIApplication) {
+    func sceneWillEnterForeground(_ scene: UIScene) {
         if self.isActiveValue {
             self.isInForegroundValue = true
             self.isInForegroundPromise.set(true)
@@ -2077,7 +2126,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         })
     }
 
-    func applicationDidBecomeActive(_ application: UIApplication) {
+    func sceneDidBecomeActive(_ scene: UIScene) {
         self.isInForegroundValue = true
         self.isInForegroundPromise.set(true)
         self.isActiveValue = true

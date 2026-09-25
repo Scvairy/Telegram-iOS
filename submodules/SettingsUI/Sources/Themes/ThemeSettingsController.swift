@@ -634,7 +634,7 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
                 }
                 pushControllerImpl?(controller)
             // MARK: Swiftgram
-            } else if icon.isSGPro && context.sharedContext.immediateSGStatus.status < 2 {
+            } else if icon.isSGPro && !context.sharedContext.immediateSGStatus.hasProFeatures {
                 if let payWallController = context.sharedContext.makeSGPayWallController(context: context) {
                     presentControllerImpl?(payWallController, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
                 } else {
@@ -1123,7 +1123,7 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
         
         // MARK: Swiftgram
         let sgStatus = sharedData.entries[ApplicationSpecificSharedDataKeys.sgStatus]?.get(SGStatus.self) ?? SGStatus.default
-        let isPremium = sgStatus.status > 1
+        let isPremium = sgStatus.hasProFeatures
         
         let themeReference: PresentationThemeReference
         if presentationData.autoNightModeTriggered {

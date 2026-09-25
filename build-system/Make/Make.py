@@ -77,6 +77,11 @@ class BazelCommandLine:
         ]
 
         self.common_build_args = [
+            # Keep Xcode 27.1's newly introduced diagnostics visible without
+            # allowing legacy target-level -warnings-as-errors flags to stop
+            # local development builds.
+            '--@build_bazel_rules_swift//swift:copt=-no-warnings-as-errors',
+            '--copt=-Wno-error=deprecated-declarations',
         ]
 
         num_threads = max(os.cpu_count() - 2, 2)
@@ -572,8 +577,6 @@ def generate_project(bazel, arguments):
         disable_provisioning_profiles = arguments.disableProvisioningProfiles
     if arguments.projectIncludeRelease is not None:
         project_include_release = arguments.projectIncludeRelease
-    if arguments.xcodeManagedCodesigning is not None and arguments.xcodeManagedCodesigning == True:
-        disable_extensions = True
     if arguments.generateDsym is not None:
         generate_dsym = arguments.generateDsym
     if arguments.target is not None:
